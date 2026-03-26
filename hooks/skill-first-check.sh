@@ -1,7 +1,7 @@
 #!/bin/bash
 # Skill-Gate Hook — Auto-discovers project skills and reminds Claude to check them first
 # Fires on every UserPromptSubmit, injects context reminder
-# https://github.com/YOUR_USERNAME/skill-gate
+# https://github.com/MohamedBIqbal/skill-gate
 
 INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')

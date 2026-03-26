@@ -23,7 +23,7 @@ Together, they provide defense in depth. Even if the skill description matching 
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/skill-gate.git
+git clone https://github.com/MohamedBIqbal/skill-gate.git
 
 # Install into your project
 bash skill-gate/install.sh /path/to/your/project
