@@ -11,6 +11,18 @@
           }
         ]
       }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact-remind.sh",
+            "timeout": 5,
+            "statusMessage": "Re-injecting skill awareness..."
+          }
+        ]
+      }
     ]
   }
 }

@@ -10,14 +10,15 @@ You've built project-specific skills encoding your architecture decisions, quali
 
 ## The Solution
 
-Skill-Gate uses two layers:
+Skill-Gate uses two layers plus a compaction safety net:
 
 | Layer | Mechanism | Reliability |
 |-------|-----------|-------------|
 | **Hook** (active) | `UserPromptSubmit` hook injects a reminder into Claude's context on every non-trivial prompt | High — fires before Claude starts thinking |
 | **Skill** (passive) | `skill-first` router skill auto-discovers all project skills and instructs Claude to check them | Medium — triggered by description matching |
+| **PostCompact** (recovery) | `PostCompact` hook re-injects skill awareness after context compaction | High — fires automatically when context is compressed |
 
-Together, they provide defense in depth. Even if the skill description matching fails, the hook catches it.
+Together, they provide defense in depth. Even if the skill description matching fails, the hook catches it. And when long conversations trigger compaction (which strips skill bodies from context), the PostCompact hook restores awareness.
 
 ## Install
 
@@ -38,7 +39,8 @@ your-project/
 └── .claude/
     ├── settings.json              # Hook wiring (merged with existing)
     ├── hooks/
-    │   └── skill-first-check.sh   # Auto-discovers skills, injects reminder
+    │   ├── skill-first-check.sh   # Auto-discovers skills, injects reminder
+    │   └── post-compact-remind.sh # Re-injects skill awareness after compaction
     ├── skills/
     │   ├── skill-first/SKILL.md   # Router skill — finds matching skills
     │   └── context/SKILL.md       # Session persistence across restarts
@@ -53,8 +55,8 @@ your-project/
 If you prefer to install manually:
 
 1. Copy `skills/skill-first/` and `skills/context/` into your `.claude/skills/`
-2. Copy `hooks/skill-first-check.sh` into `.claude/hooks/` and `chmod +x` it
-3. Add the hook to your `.claude/settings.json`:
+2. Copy `hooks/skill-first-check.sh` and `hooks/post-compact-remind.sh` into `.claude/hooks/` and `chmod +x` both
+3. Add the hooks to your `.claude/settings.json`:
 
 ```json
 {
@@ -67,6 +69,18 @@ If you prefer to install manually:
             "command": ".claude/hooks/skill-first-check.sh",
             "timeout": 5,
             "statusMessage": "Checking project skills..."
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact-remind.sh",
+            "timeout": 5,
+            "statusMessage": "Re-injecting skill awareness..."
           }
         ]
       }
@@ -88,10 +102,22 @@ On every prompt submission, `skill-first-check.sh`:
 
 **Smart filtering** — the hook stays silent for:
 - Git commands (`git status`, `git log`, etc.)
-- Simple confirmations (`yes`, `no`, `ok`, `sure`)
+- Simple confirmations (`yes`, `no`, `ok`, `sure`, `yep`, `nope`)
 - Greetings (`hello`, `hi`, `hey`)
 - Short prompts (fewer than 4 words)
-- CLI commands (`/clear`, `/help`, `/compact`)
+- CLI commands (`/clear`, `/help`, `/compact`, `/commit`)
+
+**Portability** — uses `CLAUDE_PROJECT_DIR` environment variable when available, falls back to current working directory.
+
+### The PostCompact Hook (Layer 1.5)
+
+When Claude Code compresses conversation history (compaction), skill bodies loaded earlier in the conversation are lost. The `post-compact-remind.sh` hook fires after every compaction event and:
+
+1. Counts available skills in `.claude/skills/`
+2. Injects a reminder that skill bodies may have been lost
+3. Instructs Claude to re-invoke any actively used skills
+
+This prevents the "skills amnesia" problem in long conversations.
 
 ### The Skill (Layer 2)
 
@@ -117,12 +143,12 @@ Say `save context` before ending a session. Say `load context` or `where were we
 bash /path/to/skill-gate/uninstall.sh /path/to/your/project
 ```
 
-Removes skills, hook, and cleans `settings.json`. Context files are preserved.
+Removes skills, hooks, and cleans `settings.json`. Context files are preserved.
 
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- `jq` (for JSON parsing in the hook)
+- `jq` (for JSON parsing in the hooks)
 - Bash 4+
 
 ## How It Compares
@@ -132,7 +158,7 @@ Removes skills, hook, and cleans `settings.json`. Context files are preserved.
 | Better skill descriptions | Match keywords in description | Medium | Per-skill |
 | CLAUDE.md instructions | Advisory text | Low-Medium | Manual |
 | Manual `/skill-name` | User invokes directly | High | User remembers |
-| **Skill-Gate** | Hook + Skill (two layers) | **High** | **Auto-discovers** |
+| **Skill-Gate** | Hook + Skill + PostCompact (three layers) | **High** | **Auto-discovers** |
 
 ## Limitations
 

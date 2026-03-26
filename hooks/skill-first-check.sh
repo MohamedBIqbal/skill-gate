@@ -3,11 +3,17 @@
 # Fires on every UserPromptSubmit, injects context reminder
 # https://github.com/MohamedBIqbal/skill-gate
 
+# Use CLAUDE_PROJECT_DIR for portability (falls back to CWD)
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+
 INPUT=$(cat)
-PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
+PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
+
+# Bail if jq failed or prompt is empty
+if [ -z "$PROMPT" ]; then exit 0; fi
 
 # Skip reminders for simple operations
-if echo "$PROMPT" | grep -qiE '^(git |ls |cat |/clear|/help|/compact|/hooks|hey|hi |hello|thanks|thank you|yes|no|ok|sure|go ahead)'; then
+if echo "$PROMPT" | grep -qiE '^(git |ls |cat |/clear|/help|/compact|/hooks|/commit|hey|hi |hello|thanks|thank you|yes|no|ok|sure|go ahead|yep|nope)'; then
   exit 0
 fi
 
@@ -18,16 +24,14 @@ if [ "$WORD_COUNT" -lt 4 ]; then
 fi
 
 # Auto-discover skills from .claude/skills/
-SKILLS_DIR=".claude/skills"
+SKILLS_DIR="${PROJECT_DIR}/.claude/skills"
 if [ -d "$SKILLS_DIR" ]; then
   SKILL_LIST=$(find "$SKILLS_DIR" -name "SKILL.md" -maxdepth 2 | while read -r f; do
-    dir=$(dirname "$f")
-    basename "$dir"
-  done | grep -v "skill-first" | sort | tr '\n' ', ' | sed 's/,$//')
-  SKILL_COUNT=$(echo "$SKILL_LIST" | tr ',' '\n' | wc -w | tr -d ' ')
+    basename "$(dirname "$f")"
+  done | grep -v "skill-first" | sort | tr '\n' ',' | sed 's/,$//')
+  SKILL_COUNT=$(echo "$SKILL_LIST" | tr ',' '\n' | grep -c '.')
 else
-  SKILL_LIST=""
-  SKILL_COUNT=0
+  exit 0
 fi
 
 # If no skills found, skip
@@ -43,4 +47,3 @@ cat <<ENDJSON
   }
 }
 ENDJSON
-exit 0

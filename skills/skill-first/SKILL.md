@@ -1,22 +1,21 @@
 ---
 name: skill-first
-description: Routes tasks to project skills before using built-in knowledge. Auto-discovers all skills in .claude/skills/ and recommends which to invoke. Use when starting any implementation, design, review, or planning task — acts as a pre-flight checklist ensuring project expertise is applied first. TRIGGER when beginning work on any non-trivial task. DO NOT TRIGGER for simple questions, git commands, or file reads.
+description: Skill router — scans tasks against project skills, recommends invocations before implementation. Pre-flight checklist for design, review, planning. Triggers on non-trivial tasks.
 user-invocable: false
 ---
 
 # Skill-First Router
 
-Before using built-in knowledge to solve or design anything, check this project's skills. Project skills encode domain decisions, architectural patterns, and quality standards specific to this codebase.
+Before using built-in knowledge to solve or design anything, check this project's skills catalog. Project skills encode hard-won domain decisions, architectural patterns, and quality standards specific to this codebase.
 
 ## Routing Protocol
 
 When a task arrives:
 
-1. **Scan available skills** — List all directories in `.claude/skills/`, read each `SKILL.md` description
-2. **Classify the task** — What domains does it touch?
-3. **Match against skills** — Find all skills whose description overlaps with the task
-4. **Invoke matched skills** — Load them via the Skill tool before writing any code or making design decisions
-5. **Proceed with skill context** — Only after skill knowledge is loaded, begin implementation
+1. **Classify the task** — What domains does it touch? (vision, security, testing, UI, infrastructure, AI/ML, documentation, etc.)
+2. **Match against skills** — Find all skills in `.claude/skills/` whose domain overlaps with the task. Read each `SKILL.md` description to determine relevance.
+3. **Invoke matched skills** — Load them via the Skill tool before writing any code or making design decisions
+4. **Proceed with skill context** — Only after skill knowledge is loaded, begin implementation
 
 ## Auto-Discovery
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Skill-Gate Uninstaller
-# Removes skills, hook, and cleans settings.json
+# Removes skills, hooks, and cleans settings.json
 set -e
 
 TARGET_DIR="${1:-.}"
@@ -35,22 +35,39 @@ if [ -d "$TARGET_DIR/.claude/skills/context" ]; then
   fi
 fi
 
-# Remove hook
+# Remove hooks
 if [ -f "$TARGET_DIR/.claude/hooks/skill-first-check.sh" ]; then
   rm "$TARGET_DIR/.claude/hooks/skill-first-check.sh"
   echo "Removed: hooks/skill-first-check.sh"
 fi
 
-# Clean hook from settings.json
+if [ -f "$TARGET_DIR/.claude/hooks/post-compact-remind.sh" ]; then
+  rm "$TARGET_DIR/.claude/hooks/post-compact-remind.sh"
+  echo "Removed: hooks/post-compact-remind.sh"
+fi
+
+# Clean hooks from settings.json
 SETTINGS_FILE="$TARGET_DIR/.claude/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
+  # Remove UserPromptSubmit hook
   if jq -e '.hooks.UserPromptSubmit' "$SETTINGS_FILE" > /dev/null 2>&1; then
     TMP_FILE=$(mktemp)
     jq 'del(.hooks.UserPromptSubmit[] | select(.hooks[].command == ".claude/hooks/skill-first-check.sh"))
-        | if .hooks.UserPromptSubmit == [] then del(.hooks.UserPromptSubmit) else . end
-        | if .hooks == {} then del(.hooks) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
-    echo "Removed hook from settings.json"
+        | if .hooks.UserPromptSubmit == [] then del(.hooks.UserPromptSubmit) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
+    echo "Removed UserPromptSubmit hook from settings.json"
   fi
+
+  # Remove PostCompact hook
+  if jq -e '.hooks.PostCompact' "$SETTINGS_FILE" > /dev/null 2>&1; then
+    TMP_FILE=$(mktemp)
+    jq 'del(.hooks.PostCompact[] | select(.hooks[].command == ".claude/hooks/post-compact-remind.sh"))
+        | if .hooks.PostCompact == [] then del(.hooks.PostCompact) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
+    echo "Removed PostCompact hook from settings.json"
+  fi
+
+  # Clean up empty hooks object and empty file
+  TMP_FILE=$(mktemp)
+  jq 'if .hooks == {} then del(.hooks) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
 
   # Remove settings.json if empty
   if [ "$(jq 'keys | length' "$SETTINGS_FILE")" -eq 0 ]; then
