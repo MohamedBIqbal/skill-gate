@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/skill-first-check.sh",
+            "timeout": 5,
+            "statusMessage": "Checking project skills..."
+          }
+        ]
+      }
+    ]
+  }
+}
