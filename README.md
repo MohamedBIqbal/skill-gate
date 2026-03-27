@@ -289,8 +289,9 @@ bash /path/to/skill-gate/install.sh /path/to/your/project
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
-- `jq` (for JSON parsing in the hooks)
-- Bash 3.2+ (macOS default works)
+- `jq` — `brew install jq` (macOS) / `apt install jq` (Linux)
+- Bash 3.2+ and standard POSIX tools (`find`, `grep`, `awk`, `sort`, `tr`, `sed`)
+- Works on **macOS**, **Linux**, and **Windows (WSL)**. No OS-specific dependencies.
 
 ## License
 
