@@ -36,32 +36,53 @@ if [ -d "$TARGET_DIR/.claude/skills/context" ]; then
 fi
 
 # Remove hooks
-if [ -f "$TARGET_DIR/.claude/hooks/skill-first-check.sh" ]; then
-  rm "$TARGET_DIR/.claude/hooks/skill-first-check.sh"
-  echo "Removed: hooks/skill-first-check.sh"
-fi
+for hook in skill-queue.sh skill-first-check.sh build-skill-index.sh token-guardrail.sh post-compact-remind.sh; do
+  if [ -f "$TARGET_DIR/.claude/hooks/$hook" ]; then
+    rm "$TARGET_DIR/.claude/hooks/$hook"
+    echo "Removed: hooks/$hook"
+  fi
+done
 
-if [ -f "$TARGET_DIR/.claude/hooks/post-compact-remind.sh" ]; then
-  rm "$TARGET_DIR/.claude/hooks/post-compact-remind.sh"
-  echo "Removed: hooks/post-compact-remind.sh"
-fi
+# Remove generated files
+for f in skill-index.txt skill-phases.conf skill-phases.conf.example; do
+  if [ -f "$TARGET_DIR/.claude/hooks/$f" ]; then
+    rm "$TARGET_DIR/.claude/hooks/$f"
+    echo "Removed: hooks/$f"
+  fi
+done
 
 # Clean hooks from settings.json
 SETTINGS_FILE="$TARGET_DIR/.claude/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
-  # Remove UserPromptSubmit hook
+  # Remove UserPromptSubmit hooks matching skill-gate
   if jq -e '.hooks.UserPromptSubmit' "$SETTINGS_FILE" > /dev/null 2>&1; then
     TMP_FILE=$(mktemp)
-    jq 'del(.hooks.UserPromptSubmit[] | select(.hooks[].command == ".claude/hooks/skill-first-check.sh"))
-        | if .hooks.UserPromptSubmit == [] then del(.hooks.UserPromptSubmit) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
-    echo "Removed UserPromptSubmit hook from settings.json"
+    jq '
+      .hooks.UserPromptSubmit |= [
+        .[] | .hooks |= [
+          .[] | select(
+            .command != ".claude/hooks/skill-first-check.sh" and
+            .command != ".claude/hooks/skill-queue.sh" and
+            .command != ".claude/hooks/token-guardrail.sh"
+          )
+        ] | select(.hooks | length > 0)
+      ]
+      | if .hooks.UserPromptSubmit == [] then del(.hooks.UserPromptSubmit) else . end
+    ' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
+    echo "Removed UserPromptSubmit hooks from settings.json"
   fi
 
   # Remove PostCompact hook
   if jq -e '.hooks.PostCompact' "$SETTINGS_FILE" > /dev/null 2>&1; then
     TMP_FILE=$(mktemp)
-    jq 'del(.hooks.PostCompact[] | select(.hooks[].command == ".claude/hooks/post-compact-remind.sh"))
-        | if .hooks.PostCompact == [] then del(.hooks.PostCompact) else . end' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
+    jq '
+      .hooks.PostCompact |= [
+        .[] | .hooks |= [
+          .[] | select(.command != ".claude/hooks/post-compact-remind.sh")
+        ] | select(.hooks | length > 0)
+      ]
+      | if .hooks.PostCompact == [] then del(.hooks.PostCompact) else . end
+    ' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
     echo "Removed PostCompact hook from settings.json"
   fi
 

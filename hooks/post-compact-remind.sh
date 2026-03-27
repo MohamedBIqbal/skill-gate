@@ -15,7 +15,7 @@ cat <<ENDJSON
 {
   "hookSpecificOutput": {
     "hookEventName": "PostCompact",
-    "additionalContext": "Context was compacted. Skill bodies may have been lost. If you were actively using a skill, re-invoke it with /skill-name. Project has ${SKILL_COUNT} skills available."
+    "additionalContext": "Context was compacted. Skill bodies and queue state may have been lost. If a SKILL-QUEUE was in progress, check your earlier summaries and resume from the next incomplete phase. For single skills, re-invoke with /skill-name. Project has ${SKILL_COUNT} skills available."
   }
 }
 ENDJSON

@@ -5,9 +5,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/skill-first-check.sh",
+            "command": ".claude/hooks/skill-queue.sh",
             "timeout": 5,
-            "statusMessage": "Checking project skills..."
+            "statusMessage": "Matching skills..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/token-guardrail.sh",
+            "timeout": 5,
+            "statusMessage": "Checking token efficiency..."
           }
         ]
       }

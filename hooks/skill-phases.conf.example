@@ -1,0 +1,27 @@
+# Skill Phase Configuration — Customize for your project
+# Format: skill-name:phase-number:phase-label
+# Skills not listed here default to phase 3 (implement).
+#
+# Copy this file to skill-phases.conf and edit to match your project's skills.
+# Phases follow a natural workflow: specify → design → domain → implement → quality → ops
+#
+# Phase 1 (spec): planning and specification
+# Phase 2 (design): architecture and system design
+# Phase 3 (domain): domain-specific knowledge (DEFAULT)
+# Phase 4 (implement): implementation patterns and infrastructure
+# Phase 5 (quality): testing, review, and security
+# Phase 6 (ops): observability, documentation, deployment
+
+# --- Example entries (uncomment and customize) ---
+# spec-driven-dev:1:spec
+# agent-design:2:design
+# langgraph:2:design
+# vision:3:domain
+# privacy:3:domain
+# docker:4:implement
+# web-ui:4:implement
+# tdd:5:quality
+# ai-code-review:5:quality
+# ai-security:5:quality
+# observability:6:ops
+# documentation:6:ops

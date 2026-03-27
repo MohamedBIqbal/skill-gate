@@ -22,18 +22,35 @@ echo "Installing skills..."
 mkdir -p "$TARGET_DIR/.claude/skills"
 cp -r "$SCRIPT_DIR/skills/skill-first" "$TARGET_DIR/.claude/skills/"
 cp -r "$SCRIPT_DIR/skills/context" "$TARGET_DIR/.claude/skills/"
-echo "  - skill-first (router)"
+echo "  - skill-first (router with queue protocol)"
 echo "  - context (session persistence)"
 
 # Copy hooks
 echo "Installing hooks..."
 mkdir -p "$TARGET_DIR/.claude/hooks"
-cp "$SCRIPT_DIR/hooks/skill-first-check.sh" "$TARGET_DIR/.claude/hooks/"
+cp "$SCRIPT_DIR/hooks/skill-queue.sh" "$TARGET_DIR/.claude/hooks/"
+cp "$SCRIPT_DIR/hooks/build-skill-index.sh" "$TARGET_DIR/.claude/hooks/"
+cp "$SCRIPT_DIR/hooks/token-guardrail.sh" "$TARGET_DIR/.claude/hooks/"
 cp "$SCRIPT_DIR/hooks/post-compact-remind.sh" "$TARGET_DIR/.claude/hooks/"
-chmod +x "$TARGET_DIR/.claude/hooks/skill-first-check.sh"
+cp "$SCRIPT_DIR/hooks/skill-phases.conf.example" "$TARGET_DIR/.claude/hooks/"
+chmod +x "$TARGET_DIR/.claude/hooks/skill-queue.sh"
+chmod +x "$TARGET_DIR/.claude/hooks/build-skill-index.sh"
+chmod +x "$TARGET_DIR/.claude/hooks/token-guardrail.sh"
 chmod +x "$TARGET_DIR/.claude/hooks/post-compact-remind.sh"
-echo "  - skill-first-check.sh (UserPromptSubmit)"
-echo "  - post-compact-remind.sh (PostCompact)"
+echo "  - skill-queue.sh (UserPromptSubmit — keyword matching + queue protocol)"
+echo "  - build-skill-index.sh (index generator — auto-rebuilds on changes)"
+echo "  - token-guardrail.sh (UserPromptSubmit — cost-awareness warnings)"
+echo "  - post-compact-remind.sh (PostCompact — re-injects skill awareness)"
+echo "  - skill-phases.conf.example (phase ordering template)"
+
+# Also keep legacy hook for users who prefer the simpler version
+cp "$SCRIPT_DIR/hooks/skill-first-check.sh" "$TARGET_DIR/.claude/hooks/"
+chmod +x "$TARGET_DIR/.claude/hooks/skill-first-check.sh"
+echo "  - skill-first-check.sh (legacy — flat list, no queue)"
+
+# Build initial skill index
+echo "Building skill index..."
+(cd "$TARGET_DIR" && ".claude/hooks/build-skill-index.sh" 2>/dev/null) || echo "  (will auto-build on first prompt)"
 
 # Wire settings.json
 SETTINGS_FILE="$TARGET_DIR/.claude/settings.json"
@@ -49,16 +66,24 @@ if [ -f "$SETTINGS_FILE" ]; then
     echo "Please manually merge hooks from examples/settings.json"
     echo ""
   else
-    # Merge both hooks into existing settings
+    # Merge hooks into existing settings
     TMP_FILE=$(mktemp)
     jq '.hooks = (.hooks // {}) + {
       "UserPromptSubmit": [{
-        "hooks": [{
-          "type": "command",
-          "command": ".claude/hooks/skill-first-check.sh",
-          "timeout": 5,
-          "statusMessage": "Checking project skills..."
-        }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/skill-queue.sh",
+            "timeout": 5,
+            "statusMessage": "Matching skills..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/token-guardrail.sh",
+            "timeout": 5,
+            "statusMessage": "Checking token efficiency..."
+          }
+        ]
       }],
       "PostCompact": [{
         "hooks": [{
@@ -69,7 +94,7 @@ if [ -f "$SETTINGS_FILE" ]; then
         }]
       }]
     }' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
-    echo "  - Both hooks wired in settings.json"
+    echo "  - All hooks wired in settings.json"
   fi
 else
   cp "$SCRIPT_DIR/examples/settings.json" "$SETTINGS_FILE"
@@ -107,11 +132,12 @@ EOF
 fi
 
 echo ""
-echo "Done! Skill-Gate is installed."
+echo "Done! Skill-Gate v2 is installed."
 echo ""
 echo "Next steps:"
 echo "  1. Restart Claude Code or visit /hooks to reload settings"
-echo "  2. Try asking Claude to implement something — it should check skills first"
-echo "  3. Say 'save context' to test context persistence"
+echo "  2. (Optional) Copy skill-phases.conf.example → skill-phases.conf and customize phases"
+echo "  3. Try asking Claude to implement something — it should check skills first"
+echo "  4. For multi-skill tasks, Claude will use subagent delegation instead of loading all skills"
 echo ""
 echo "To uninstall: bash $(cd "$SCRIPT_DIR" && pwd)/uninstall.sh $TARGET_DIR"

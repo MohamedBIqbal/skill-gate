@@ -10,12 +10,22 @@ Before using built-in knowledge to solve or design anything, check this project'
 
 ## Routing Protocol
 
-When a task arrives:
+When a task arrives, the `skill-queue.sh` hook auto-matches skills and injects one of:
 
-1. **Classify the task** — What domains does it touch? (vision, security, testing, UI, infrastructure, AI/ML, documentation, etc.)
-2. **Match against skills** — Find all skills in `.claude/skills/` whose domain overlaps with the task. Read each `SKILL.md` description to determine relevance.
-3. **Invoke matched skills** — Load them via the Skill tool before writing any code or making design decisions
-4. **Proceed with skill context** — Only after skill knowledge is loaded, begin implementation
+- **SKILL-MATCH** (1 skill): Use the `Skill` tool to load it directly — low overhead.
+- **SKILL-QUEUE** (2+ skills): Follow the queue protocol below — do NOT load all via Skill tool.
+- **SKILL-GATE** (0 matches): Check the catalog manually, the hook couldn't auto-match.
+
+### Skill Queue Protocol (2+ skills)
+
+When the hook injects a SKILL-QUEUE with phased skills:
+
+1. **For each skill in phase order**, spawn a subagent via the `Agent` tool (model: sonnet).
+2. **Subagent prompt template**: "Read `.claude/skills/{name}/SKILL.md`. Apply its guidance to this task: {task description}. Return a structured summary: key decisions, constraints, artifacts to create."
+3. **Chain context**: Pass accumulated phase summaries to each subsequent subagent.
+4. **Synthesize**: After all phases, combine summaries into your response.
+5. **Never load queued skills via Skill tool** — that permanently consumes main context tokens.
+6. **Single follow-up**: If a later question only involves one skill, the Skill tool is fine.
 
 ## Auto-Discovery
 
@@ -27,12 +37,12 @@ Match the task against each skill's description. Look for keyword overlap, domai
 
 ## Multi-Skill Tasks
 
-Most real tasks touch multiple domains. Examples:
+Most real tasks touch multiple domains. The hook auto-matches and queues them. Examples:
 - "Add an API endpoint" → security skill + testing skill + domain-specific skill
 - "Build the dashboard" → UI skill + observability skill + data skill
 - "Deploy the service" → infrastructure skill + security skill + monitoring skill
 
-Always identify ALL relevant skills, not just the primary one.
+The hook assigns matched skills to phases: spec → design → domain → implement → quality → ops.
 
 ## When NOT to Route
 
